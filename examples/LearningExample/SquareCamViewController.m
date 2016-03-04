@@ -172,15 +172,6 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     if ([session canAddInput:deviceInput])
         [session addInput:deviceInput];
 
-    // Make a still image output
-    stillImageOutput = [AVCaptureStillImageOutput new];
-    [stillImageOutput addObserver:self
-                       forKeyPath:@"capturingStillImage"
-                          options:NSKeyValueObservingOptionNew
-                          context:(__bridge void *_Nullable)(AVCaptureStillImageIsCapturingStillImageContext)];
-    if ([session canAddOutput:stillImageOutput])
-        [session addOutput:stillImageOutput];
-
     // Make a video data output
     videoDataOutput = [AVCaptureVideoDataOutput new];
 
@@ -200,7 +191,7 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     if ([session canAddOutput:videoDataOutput])
         [session addOutput:videoDataOutput];
     [[videoDataOutput connectionWithMediaType:AVMediaTypeVideo] setEnabled:YES];
-    detectFaces = YES;
+
 
     effectiveScale = 1.0;
     previewLayer = [[AVCaptureVideoPreviewLayer alloc] initWithSession:session];
@@ -215,7 +206,6 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
 
 // clean up capture setup
 - (void)teardownAVCapture {
-    [stillImageOutput removeObserver:self forKeyPath:@"isCapturingStillImage"];
     [previewLayer removeFromSuperlayer];
 }
 
@@ -418,20 +408,6 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     }
 }
 
-// turn on/off face detection
-- (IBAction)toggleFaceDetection:(id)sender {
-    detectFaces = [(UISwitch *)sender isOn];
-    [[videoDataOutput connectionWithMediaType:AVMediaTypeVideo] setEnabled:detectFaces];
-    if (!detectFaces) {
-        dispatch_async(dispatch_get_main_queue(), ^(void) {
-          // clear out any squares currently displaying.
-          [self drawFaceBoxesForFeatures:[NSArray array]
-                               forVideoBox:CGRectZero
-                               orientation:UIDeviceOrientationPortrait];
-        });
-    }
-}
-
 // find where the video box is positioned within the preview layer based on the video size and gravity
 + (CGRect)videoPreviewBoxForGravity:(NSString *)gravity frameSize:(CGSize)frameSize apertureSize:(CGSize)apertureSize {
     CGFloat apertureRatio = apertureSize.height / apertureSize.width;
@@ -472,108 +448,6 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
         videoBox.origin.y = (size.height - frameSize.height) / 2;
 
     return videoBox;
-}
-
-// called asynchronously as the capture output is capturing sample buffers, this method asks the face detector (if on)
-// to detect features and for each draw the red square in a layer and set appropriate orientation
-- (void)drawFaceBoxesForFeatures:(NSArray *)features
-                     forVideoBox:(CGRect)clap
-                     orientation:(UIDeviceOrientation)orientation {
-    NSArray *sublayers = [NSArray arrayWithArray:[previewLayer sublayers]];
-    NSInteger sublayersCount = [sublayers count], currentSublayer = 0;
-    NSInteger featuresCount = [features count], currentFeature = 0;
-
-    [CATransaction begin];
-    [CATransaction setValue:(id)kCFBooleanTrue forKey:kCATransactionDisableActions];
-
-    // hide all the face layers
-    for (CALayer *layer in sublayers) {
-        if ([[layer name] isEqualToString:@"FaceLayer"])
-            [layer setHidden:YES];
-    }
-
-    if (featuresCount == 0 || !detectFaces) {
-        [CATransaction commit];
-        return; // early bail.
-    }
-
-    CGSize parentFrameSize = [previewView frame].size;
-    NSString *gravity = [previewLayer videoGravity];
-    BOOL isMirrored = [[videoDataOutput connectionWithMediaType:AVMediaTypeVideo] isVideoMirrored];
-    CGRect previewBox = [SquareCamViewController videoPreviewBoxForGravity:gravity
-                                                                 frameSize:parentFrameSize
-                                                              apertureSize:clap.size];
-
-    for (CIFaceFeature *ff in features) {
-        // find the correct position for the square layer within the previewLayer
-        // the feature box originates in the bottom left of the video frame.
-        // (Bottom right if mirroring is turned on)
-        CGRect faceRect = [ff bounds];
-
-        // flip preview width and height
-        CGFloat temp = faceRect.size.width;
-        faceRect.size.width = faceRect.size.height;
-        faceRect.size.height = temp;
-        temp = faceRect.origin.x;
-        faceRect.origin.x = faceRect.origin.y;
-        faceRect.origin.y = temp;
-        // scale coordinates so they fit in the preview box, which may be scaled
-        CGFloat widthScaleBy = previewBox.size.width / clap.size.height;
-        CGFloat heightScaleBy = previewBox.size.height / clap.size.width;
-        faceRect.size.width *= widthScaleBy;
-        faceRect.size.height *= heightScaleBy;
-        faceRect.origin.x *= widthScaleBy;
-        faceRect.origin.y *= heightScaleBy;
-
-        if (isMirrored)
-            faceRect = CGRectOffset(faceRect, previewBox.origin.x + previewBox.size.width - faceRect.size.width -
-                                                      (faceRect.origin.x * 2),
-                                    previewBox.origin.y);
-        else
-            faceRect = CGRectOffset(faceRect, previewBox.origin.x, previewBox.origin.y);
-
-        CALayer *featureLayer = nil;
-
-        // re-use an existing layer if possible
-        while (!featureLayer && (currentSublayer < sublayersCount)) {
-            CALayer *currentLayer = [sublayers objectAtIndex:currentSublayer++];
-            if ([[currentLayer name] isEqualToString:@"FaceLayer"]) {
-                featureLayer = currentLayer;
-                [currentLayer setHidden:NO];
-            }
-        }
-
-        // create a new one if necessary
-        if (!featureLayer) {
-            featureLayer = [CALayer new];
-            [featureLayer setContents:(id)[square CGImage]];
-            [featureLayer setName:@"FaceLayer"];
-            [previewLayer addSublayer:featureLayer];
-        }
-        [featureLayer setFrame:faceRect];
-
-        switch (orientation) {
-            case UIDeviceOrientationPortrait:
-                [featureLayer setAffineTransform:CGAffineTransformMakeRotation(DegreesToRadians(0.))];
-                break;
-            case UIDeviceOrientationPortraitUpsideDown:
-                [featureLayer setAffineTransform:CGAffineTransformMakeRotation(DegreesToRadians(180.))];
-                break;
-            case UIDeviceOrientationLandscapeLeft:
-                [featureLayer setAffineTransform:CGAffineTransformMakeRotation(DegreesToRadians(90.))];
-                break;
-            case UIDeviceOrientationLandscapeRight:
-                [featureLayer setAffineTransform:CGAffineTransformMakeRotation(DegreesToRadians(-90.))];
-                break;
-            case UIDeviceOrientationFaceUp:
-            case UIDeviceOrientationFaceDown:
-            default:
-                break; // leave the layer in its last known orientation
-        }
-        currentFeature++;
-    }
-
-    [CATransaction commit];
 }
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
@@ -681,9 +555,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
     [self setupAVCapture];
     square = [UIImage imageNamed:@"squarePNG"];
-    NSDictionary *detectorOptions =
-            [[NSDictionary alloc] initWithObjectsAndKeys:CIDetectorAccuracyLow, CIDetectorAccuracy, nil];
-    faceDetector = [CIDetector detectorOfType:CIDetectorTypeFace context:nil options:detectorOptions];
 
     labelLayers = [[NSMutableArray alloc] init];
 
@@ -700,34 +571,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         beginGestureScale = effectiveScale;
     }
     return YES;
-}
-
-// scale image depending on users pinch gesture
-- (IBAction)handlePinchGesture:(UIPinchGestureRecognizer *)recognizer {
-    BOOL allTouchesAreOnThePreviewLayer = YES;
-    NSUInteger numTouches = [recognizer numberOfTouches], i;
-    for (i = 0; i < numTouches; ++i) {
-        CGPoint location = [recognizer locationOfTouch:i inView:previewView];
-        CGPoint convertedLocation = [previewLayer convertPoint:location fromLayer:previewLayer.superlayer];
-        if (![previewLayer containsPoint:convertedLocation]) {
-            allTouchesAreOnThePreviewLayer = NO;
-            break;
-        }
-    }
-
-    if (allTouchesAreOnThePreviewLayer) {
-        effectiveScale = beginGestureScale * recognizer.scale;
-        if (effectiveScale < 1.0)
-            effectiveScale = 1.0;
-        CGFloat maxScaleAndCropFactor =
-                [[stillImageOutput connectionWithMediaType:AVMediaTypeVideo] videoMaxScaleAndCropFactor];
-        if (effectiveScale > maxScaleAndCropFactor)
-            effectiveScale = maxScaleAndCropFactor;
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:.025];
-        [previewLayer setAffineTransform:CGAffineTransformMakeScale(effectiveScale, effectiveScale)];
-        [CATransaction commit];
-    }
 }
 
 - (BOOL)prefersStatusBarHidden {

@@ -58,7 +58,6 @@
     UIView *flashView;
     UIImage *square;
     BOOL isUsingFrontFacingCamera;
-    CIDetector *faceDetector;
     CGFloat beginGestureScale;
     CGFloat effectiveScale;
     void *network;
