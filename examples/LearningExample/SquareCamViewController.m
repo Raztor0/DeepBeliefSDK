@@ -71,7 +71,6 @@ NS_ENUM(NSUInteger, EPredictionState) {
 static CGFloat DegreesToRadians(CGFloat degrees) { return degrees * M_PI / 180; };
 
 // utility used by newSquareOverlayedImageForFeatures for
-static CGContextRef CreateCGBitmapContextForSize(CGSize size);
 static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     CGContextRef context = NULL;
     CGColorSpaceRef colorSpace;
