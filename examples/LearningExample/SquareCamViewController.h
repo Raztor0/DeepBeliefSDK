@@ -55,11 +55,7 @@
     AVCaptureVideoPreviewLayer *previewLayer;
     AVCaptureVideoDataOutput *videoDataOutput;
     dispatch_queue_t videoDataOutputQueue;
-    UIView *flashView;
     UIImage *square;
-    BOOL isUsingFrontFacingCamera;
-    CGFloat beginGestureScale;
-    CGFloat effectiveScale;
     void *network;
     NSMutableDictionary *oldPredictionValues;
     NSMutableArray *labelLayers;

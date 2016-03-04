@@ -1,15 +1,15 @@
 /*
-     File: SquareCamViewController.m
+ File: SquareCamViewController.m
  Abstract: Dmonstrates iOS 5 features of the AVCaptureStillImageOutput class
-  Version: 1.0
-
+ Version: 1.0
+ 
  Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple
  Inc. ("Apple") in consideration of your agreement to the following
  terms, and your use, installation, modification or redistribution of
  this Apple software constitutes acceptance of these terms.  If you do
  not agree with these terms, please do not use, install, modify or
  redistribute this Apple software.
-
+ 
  In consideration of your agreement to abide by the following terms, and
  subject to these terms, Apple grants you a personal, non-exclusive
  license, under Apple's copyrights in this original Apple software (the
@@ -25,13 +25,13 @@
  implied, are granted by Apple herein, including but not limited to any
  patent rights that may be infringed by your derivative works or by other
  works in which the Apple Software may be incorporated.
-
+ 
  The Apple Software is provided by Apple on an "AS IS" basis.  APPLE
  MAKES NO WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION
  THE IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS
  FOR A PARTICULAR PURPOSE, REGARDING THE APPLE SOFTWARE OR ITS USE AND
  OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
-
+ 
  IN NO EVENT SHALL APPLE BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL
  OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
@@ -40,9 +40,9 @@
  AND WHETHER UNDER THEORY OF CONTRACT, TORT (INCLUDING NEGLIGENCE),
  STRICT LIABILITY OR OTHERWISE, EVEN IF APPLE HAS BEEN ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
-
+ 
  Copyright (C) 2013 Apple Inc. All Rights Reserved.
-
+ 
  */
 
 #import "SquareCamViewController.h"
@@ -57,21 +57,16 @@
 
 #pragma mark -
 
-const int kPositivePredictionTotal = 100;
-const int kNegativePredictionTotal = 100;
-const int kElementsPerPrediction = 4096;
+const NSInteger kPositivePredictionTotal = 100;
+const NSInteger kNegativePredictionTotal = 100;
 
-enum EPredictionState {
-    eWaiting,
+NS_ENUM(NSUInteger, EPredictionState) {
+    eWaiting = 0,
     ePositiveLearning,
     eNegativeWaiting,
     eNegativeLearning,
     ePredicting,
 };
-
-// used for KVO observation of the @"capturingStillImage" property to perform flash bulb animation
-static const NSString *AVCaptureStillImageIsCapturingStillImageContext =
-        @"AVCaptureStillImageIsCapturingStillImageContext";
 
 static CGFloat DegreesToRadians(CGFloat degrees) { return degrees * M_PI / 180; };
 
@@ -81,9 +76,9 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     CGContextRef context = NULL;
     CGColorSpaceRef colorSpace;
     int bitmapBytesPerRow;
-
+    
     bitmapBytesPerRow = (size.width * 4);
-
+    
     colorSpace = CGColorSpaceCreateDeviceRGB();
     context = CGBitmapContextCreate(NULL, size.width, size.height,
                                     8, // bits per component
@@ -107,23 +102,23 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     CGAffineTransform t = CGAffineTransformMakeRotation(DegreesToRadians(degrees));
     rotatedViewBox.transform = t;
     CGSize rotatedSize = rotatedViewBox.frame.size;
-
+    
     // Create the bitmap context
     UIGraphicsBeginImageContext(rotatedSize);
     CGContextRef bitmap = UIGraphicsGetCurrentContext();
-
+    
     // Move the origin to the middle of the image so we will rotate and scale around the center.
     CGContextTranslateCTM(bitmap, rotatedSize.width / 2, rotatedSize.height / 2);
-
+    
     //   // Rotate the image context
     CGContextRotateCTM(bitmap, DegreesToRadians(degrees));
-
+    
     // Now, draw the rotated/scaled image into the context
     CGContextScaleCTM(bitmap, 1.0, -1.0);
     CGContextDrawImage(bitmap,
                        CGRectMake(-self.size.width / 2, -self.size.height / 2, self.size.width, self.size.height),
                        [self CGImage]);
-
+    
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return newImage;
@@ -136,64 +131,58 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
 @interface SquareCamViewController (InternalMethods)
 - (void)setupAVCapture;
 - (void)teardownAVCapture;
-- (void)drawFaceBoxesForFeatures:(NSArray *)features
-                     forVideoBox:(CGRect)clap
-                     orientation:(UIDeviceOrientation)orientation;
 @end
 
 @implementation SquareCamViewController
 
 - (void)setupAVCapture {
     NSError *error = nil;
-
+    
     session = [AVCaptureSession new];
     if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone)
         [session setSessionPreset:AVCaptureSessionPreset640x480];
     else
         [session setSessionPreset:AVCaptureSessionPresetPhoto];
-
+    
     // Select a video device, make an input
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     AVCaptureDeviceInput *deviceInput = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
-
+    
     if (error) {
         UIAlertView *alertView = [[UIAlertView alloc]
-                    initWithTitle:[NSString stringWithFormat:@"Failed with error %d", (int)[error code]]
-                          message:[error localizedDescription]
-                         delegate:nil
-                cancelButtonTitle:@"Dismiss"
-                otherButtonTitles:nil];
+                                  initWithTitle:[NSString stringWithFormat:@"Failed with error %d", (int)[error code]]
+                                  message:[error localizedDescription]
+                                  delegate:nil
+                                  cancelButtonTitle:@"Dismiss"
+                                  otherButtonTitles:nil];
         [alertView show];
         [self teardownAVCapture];
         return;
     }
-
-    isUsingFrontFacingCamera = NO;
+    
     if ([session canAddInput:deviceInput])
         [session addInput:deviceInput];
-
+    
     // Make a video data output
     videoDataOutput = [AVCaptureVideoDataOutput new];
-
+    
     // we want BGRA, both CoreGraphics and OpenGL work well with 'BGRA'
     NSDictionary *rgbOutputSettings = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCMPixelFormat_32BGRA]
                                                                   forKey:(id)kCVPixelBufferPixelFormatTypeKey];
     [videoDataOutput setVideoSettings:rgbOutputSettings];
     [videoDataOutput setAlwaysDiscardsLateVideoFrames:YES]; // discard if the data output queue is blocked (as we
-                                                            // process the still image)
-
+    // process the still image)
+    
     // create a serial dispatch queue used for the sample buffer delegate as well as when a still image is captured
     // a serial dispatch queue must be used to guarantee that video frames will be delivered in order
     // see the header doc for setSampleBufferDelegate:queue: for more information
     videoDataOutputQueue = dispatch_queue_create("VideoDataOutputQueue", DISPATCH_QUEUE_SERIAL);
     [videoDataOutput setSampleBufferDelegate:self queue:videoDataOutputQueue];
-
+    
     if ([session canAddOutput:videoDataOutput])
         [session addOutput:videoDataOutput];
     [[videoDataOutput connectionWithMediaType:AVMediaTypeVideo] setEnabled:YES];
-
-
-    effectiveScale = 1.0;
+    
     previewLayer = [[AVCaptureVideoPreviewLayer alloc] initWithSession:session];
     [previewLayer setBackgroundColor:[[UIColor blackColor] CGColor]];
     [previewLayer setVideoGravity:AVLayerVideoGravityResizeAspect];
@@ -207,39 +196,6 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
 // clean up capture setup
 - (void)teardownAVCapture {
     [previewLayer removeFromSuperlayer];
-}
-
-// perform a flash bulb animation using KVO to monitor the value of the capturingStillImage property of the
-// AVCaptureStillImageOutput class
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context {
-    if (context == (__bridge void *_Nullable)(AVCaptureStillImageIsCapturingStillImageContext)) {
-        BOOL isCapturingStillImage = [[change objectForKey:NSKeyValueChangeNewKey] boolValue];
-
-        if (isCapturingStillImage) {
-            // do flash bulb like animation
-            flashView = [[UIView alloc] initWithFrame:[previewView frame]];
-            [flashView setBackgroundColor:[UIColor whiteColor]];
-            [flashView setAlpha:0.f];
-            [[[self view] window] addSubview:flashView];
-
-            [UIView animateWithDuration:.4f
-                             animations:^{
-                               [flashView setAlpha:1.f];
-                             }];
-        } else {
-            [UIView animateWithDuration:.4f
-                    animations:^{
-                      [flashView setAlpha:0.f];
-                    }
-                    completion:^(BOOL finished) {
-                      [flashView removeFromSuperview];
-                      flashView = nil;
-                    }];
-        }
-    }
 }
 
 // utility routing used during image capture to set up capture orientation
@@ -263,12 +219,12 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
                                      frontFacing:(BOOL)isFrontFacing {
     CGImageRef returnImage = NULL;
     CGRect backgroundImageRect =
-            CGRectMake(0., 0., CGImageGetWidth(backgroundImage), CGImageGetHeight(backgroundImage));
+    CGRectMake(0., 0., CGImageGetWidth(backgroundImage), CGImageGetHeight(backgroundImage));
     CGContextRef bitmapContext = CreateCGBitmapContextForSize(backgroundImageRect.size);
     CGContextClearRect(bitmapContext, backgroundImageRect);
     CGContextDrawImage(bitmapContext, backgroundImageRect, backgroundImage);
     CGFloat rotationDegrees = 0.;
-
+    
     switch (orientation) {
         case UIDeviceOrientationPortrait:
             rotationDegrees = -90.;
@@ -294,7 +250,7 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
             break; // leave the layer in its last known orientation
     }
     UIImage *rotatedSquareImage = [square imageRotatedByDegrees:rotationDegrees];
-
+    
     // features found by the face detector
     for (CIFaceFeature *ff in features) {
         CGRect faceRect = [ff bounds];
@@ -302,77 +258,20 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
     }
     returnImage = CGBitmapContextCreateImage(bitmapContext);
     CGContextRelease(bitmapContext);
-
+    
     return returnImage;
-}
-
-// utility routine used after taking a still image to write the resulting image to the camera roll
-- (BOOL)writeCGImageToCameraRoll:(CGImageRef)cgImage withMetadata:(NSDictionary *)metadata {
-    CFMutableDataRef destinationData = CFDataCreateMutable(kCFAllocatorDefault, 0);
-    CGImageDestinationRef destination =
-            CGImageDestinationCreateWithData(destinationData, CFSTR("public.jpeg"), 1, NULL);
-    BOOL success = (destination != NULL);
-
-    if (!success) {
-        if (destinationData)
-            CFRelease(destinationData);
-        if (destination)
-            CFRelease(destination);
-        return NO;
-    }
-
-    const float JPEGCompQuality = 0.85f; // JPEGHigherQuality
-    CFMutableDictionaryRef optionsDict = NULL;
-    CFNumberRef qualityNum = NULL;
-
-    qualityNum = CFNumberCreate(0, kCFNumberFloatType, &JPEGCompQuality);
-    if (qualityNum) {
-        optionsDict = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-        if (optionsDict)
-            CFDictionarySetValue(optionsDict, kCGImageDestinationLossyCompressionQuality, qualityNum);
-        CFRelease(qualityNum);
-    }
-
-    CGImageDestinationAddImage(destination, cgImage, optionsDict);
-    success = CGImageDestinationFinalize(destination);
-
-    if (optionsDict)
-        CFRelease(optionsDict);
-
-    if (!success) {
-        if (destinationData)
-            CFRelease(destinationData);
-        if (destination)
-            CFRelease(destination);
-        return NO;
-    }
-
-    CFRetain(destinationData);
-    ALAssetsLibrary *library = [ALAssetsLibrary new];
-    [library writeImageDataToSavedPhotosAlbum:(__bridge id)destinationData
-                                     metadata:metadata
-                              completionBlock:^(NSURL *assetURL, NSError *error) {
-                                if (destinationData)
-                                    CFRelease(destinationData);
-                              }];
-
-    if (destinationData)
-        CFRelease(destinationData);
-    if (destination)
-        CFRelease(destination);
-    return success;
 }
 
 // utility routine to display error aleart if takePicture fails
 - (void)displayErrorOnMainQueue:(NSError *)error withMessage:(NSString *)message {
     dispatch_async(dispatch_get_main_queue(), ^(void) {
-      UIAlertView *alertView =
-              [[UIAlertView alloc] initWithTitle:[NSString stringWithFormat:@"%@ (%d)", message, (int)[error code]]
-                                         message:[error localizedDescription]
-                                        delegate:nil
-                               cancelButtonTitle:@"Dismiss"
-                               otherButtonTitles:nil];
-      [alertView show];
+        UIAlertView *alertView =
+        [[UIAlertView alloc] initWithTitle:[NSString stringWithFormat:@"%@ (%d)", message, (int)[error code]]
+                                   message:[error localizedDescription]
+                                  delegate:nil
+                         cancelButtonTitle:@"Dismiss"
+                         otherButtonTitles:nil];
+        [alertView show];
     });
 }
 
@@ -384,24 +283,24 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
             [sender setTitle:@"Learning" forState:UIControlStateNormal];
             [self triggerNextState];
         } break;
-
+            
         case ePositiveLearning: {
             // Do nothing
         } break;
-
+            
         case eNegativeWaiting: {
             [sender setTitle:@"Learning" forState:UIControlStateNormal];
             [self triggerNextState];
         } break;
-
+            
         case eNegativeLearning: {
             // Do nothing
         } break;
-
+            
         case ePredicting: {
             [self triggerNextState];
         } break;
-
+            
         default: {
             assert(FALSE); // Should never get here
         } break;
@@ -412,7 +311,7 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
 + (CGRect)videoPreviewBoxForGravity:(NSString *)gravity frameSize:(CGSize)frameSize apertureSize:(CGSize)apertureSize {
     CGFloat apertureRatio = apertureSize.height / apertureSize.width;
     CGFloat viewRatio = frameSize.width / frameSize.height;
-
+    
     CGSize size = CGSizeZero;
     if ([gravity isEqualToString:AVLayerVideoGravityResizeAspectFill]) {
         if (viewRatio > apertureRatio) {
@@ -434,19 +333,19 @@ static CGContextRef CreateCGBitmapContextForSize(CGSize size) {
         size.width = frameSize.width;
         size.height = frameSize.height;
     }
-
+    
     CGRect videoBox;
     videoBox.size = size;
     if (size.width < frameSize.width)
         videoBox.origin.x = (frameSize.width - size.width) / 2;
     else
         videoBox.origin.x = (size.width - frameSize.width) / 2;
-
+    
     if (size.height < frameSize.height)
         videoBox.origin.y = (frameSize.height - size.height) / 2;
     else
         videoBox.origin.y = (size.height - frameSize.height) / 2;
-
+    
     return videoBox;
 }
 
@@ -459,7 +358,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)runCNNOnFrame:(CVPixelBufferRef)pixelBuffer {
     assert(pixelBuffer != NULL);
-
+    
     OSType sourcePixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer);
     int doReverseChannels;
     if (kCVPixelFormatType_32ARGB == sourcePixelFormat) {
@@ -469,7 +368,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     } else {
         assert(false); // Unknown source format
     }
-
+    
     const int sourceRowBytes = (int)CVPixelBufferGetBytesPerRow(pixelBuffer);
     const int width = (int)CVPixelBufferGetWidth(pixelBuffer);
     const int fullHeight = (int)CVPixelBufferGetHeight(pixelBuffer);
@@ -491,7 +390,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     int predictionsLength;
     char **predictionsLabels;
     int predictionsLabelsLength;
-
+    
     struct timeval start;
     gettimeofday(&start, NULL);
     jpcnn_classify_image(network, cnnInput, JPCNN_RANDOM_SAMPLE, -2, &predictions, &predictionsLength,
@@ -502,11 +401,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //    const long useconds = end.tv_usec - start.tv_usec;
     //    const float duration = ((seconds)*1000 + useconds / 1000.0) + 0.5;
     //  NSLog(@"Took %f ms", duration);
-
+    
     jpcnn_destroy_image_buffer(cnnInput);
-
+    
     dispatch_async(dispatch_get_main_queue(), ^(void) {
-      [self handleNetworkPredictions:predictions withLength:predictionsLength];
+        [self handleNetworkPredictions:predictions withLength:predictionsLength];
     });
 }
 
@@ -514,63 +413,33 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self teardownAVCapture];
 }
 
-// use front/back camera
-- (IBAction)switchCameras:(id)sender {
-    AVCaptureDevicePosition desiredPosition;
-    if (isUsingFrontFacingCamera)
-        desiredPosition = AVCaptureDevicePositionBack;
-    else
-        desiredPosition = AVCaptureDevicePositionFront;
-
-    for (AVCaptureDevice *d in [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
-        if ([d position] == desiredPosition) {
-            [[previewLayer session] beginConfiguration];
-            AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:d error:nil];
-            for (AVCaptureInput *oldInput in [[previewLayer session] inputs]) {
-                [[previewLayer session] removeInput:oldInput];
-            }
-            [[previewLayer session] addInput:input];
-            [[previewLayer session] commitConfiguration];
-            break;
-        }
-    }
-    isUsingFrontFacingCamera = !isUsingFrontFacingCamera;
-}
-
 #pragma mark - View lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
+    
     NSString *networkPath = [[NSBundle mainBundle] pathForResource:@"jetpac" ofType:@"ntwk"];
     if (networkPath == NULL) {
         fprintf(stderr, "Couldn't find the neural network parameters file - did you add it as a resource to your "
-                        "application?\n");
+                "application?\n");
         assert(false);
     }
     network = jpcnn_create_network([networkPath UTF8String]);
     assert(network != NULL);
-
+    
     [self setupLearning];
-
+    
     [self setupAVCapture];
     square = [UIImage imageNamed:@"squarePNG"];
-
+    
     labelLayers = [[NSMutableArray alloc] init];
-
+    
     oldPredictionValues = [[NSMutableDictionary alloc] init];
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
     // Return YES for supported orientations
     return (interfaceOrientation == UIInterfaceOrientationPortrait);
-}
-
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    if ([gestureRecognizer isKindOfClass:[UIPinchGestureRecognizer class]]) {
-        beginGestureScale = effectiveScale;
-    }
-    return YES;
 }
 
 - (BOOL)prefersStatusBarHidden {
@@ -581,7 +450,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     const float decayValue = 0.75f;
     const float updateValue = 0.25f;
     const float minimumThreshold = 0.01f;
-
+    
     NSMutableDictionary *decayedPredictionValues = [[NSMutableDictionary alloc] init];
     for (NSString *label in oldPredictionValues) {
         NSNumber *oldPredictionValueObject = [oldPredictionValues objectForKey:label];
@@ -593,7 +462,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         }
     }
     oldPredictionValues = decayedPredictionValues;
-
+    
     for (NSString *label in newValues) {
         NSNumber *newPredictionValueObject = [newValues objectForKey:label];
         NSNumber *oldPredictionValueObject = [oldPredictionValues objectForKey:label];
@@ -617,50 +486,50 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:@"value" ascending:NO];
     NSArray *sortedLabels = [candidateLabels sortedArrayUsingDescriptors:[NSArray arrayWithObject:sort]];
-
+    
     const float leftMargin = 10.0f;
     const float topMargin = 10.0f;
-
+    
     const float valueWidth = 48.0f;
     const float valueHeight = 26.0f;
-
+    
     const float labelWidth = 246.0f;
     const float labelHeight = 26.0f;
-
+    
     const float labelMarginX = 5.0f;
     const float labelMarginY = 5.0f;
-
+    
     [self removeAllLabelLayers];
-
+    
     int labelCount = 0;
     for (NSDictionary *entry in sortedLabels) {
         NSString *label = [entry objectForKey:@"label"];
         NSNumber *valueObject = [entry objectForKey:@"value"];
         const float value = [valueObject floatValue];
-
+        
         const float originY = (topMargin + ((labelHeight + labelMarginY) * labelCount));
-
+        
         const int valuePercentage = (int)roundf(value * 100.0f);
-
+        
         const float valueOriginX = leftMargin;
         NSString *valueText = [NSString stringWithFormat:@"%d%%", valuePercentage];
-
+        
         [self addLabelLayerWithText:valueText
-                              originX:valueOriginX
-                              originY:originY
-                                width:valueWidth
-                               height:valueHeight
-                            alignment:kCAAlignmentRight];
-
+                            originX:valueOriginX
+                            originY:originY
+                              width:valueWidth
+                             height:valueHeight
+                          alignment:kCAAlignmentRight];
+        
         const float labelOriginX = (leftMargin + valueWidth + labelMarginX);
-
+        
         [self addLabelLayerWithText:[label capitalizedString]
-                              originX:labelOriginX
-                              originY:originY
-                                width:labelWidth
-                               height:labelHeight
-                            alignment:kCAAlignmentLeft];
-
+                            originX:labelOriginX
+                            originY:originY
+                              width:labelWidth
+                             height:labelHeight
+                          alignment:kCAAlignmentLeft];
+        
         labelCount += 1;
         if (labelCount > 4) {
             break;
@@ -683,24 +552,24 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                     alignment:(NSString *)alignment {
     NSString *const font = @"Menlo-Regular";
     const float fontSize = 20.0f;
-
+    
     const float marginSizeX = 5.0f;
     const float marginSizeY = 2.0f;
-
+    
     const CGRect backgroundBounds = CGRectMake(originX, originY, width, height);
-
+    
     const CGRect textBounds = CGRectMake((originX + marginSizeX), (originY + marginSizeY), (width - (marginSizeX * 2)),
                                          (height - (marginSizeY * 2)));
-
+    
     CATextLayer *background = [CATextLayer layer];
     [background setBackgroundColor:[UIColor blackColor].CGColor];
     [background setOpacity:0.5f];
     [background setFrame:backgroundBounds];
     background.cornerRadius = 5.0f;
-
+    
     [[self.view layer] addSublayer:background];
     [labelLayers addObject:background];
-
+    
     CATextLayer *layer = [CATextLayer layer];
     [layer setForegroundColor:[UIColor whiteColor].CGColor];
     [layer setFrame:textBounds];
@@ -710,7 +579,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [layer setFontSize:fontSize];
     layer.contentsScale = [[UIScreen mainScreen] scale];
     [layer setString:text];
-
+    
     [[self.view layer] addSublayer:layer];
     [labelLayers addObject:layer];
 }
@@ -728,22 +597,21 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     } else {
         self.predictionTextLayer.foregroundColor = [UIColor whiteColor].CGColor;
     }
-
+    
     [self.predictionTextLayer removeFromSuperlayer];
     [[self.view layer] addSublayer:self.predictionTextLayer];
     [self.predictionTextLayer setString:text];
 }
 
 - (void)setupLearning {
-
     negativePredictionsCount = 0;
-
+    
     trainer = NULL;
     predictor = NULL;
     predictionState = eWaiting;
-
+    
     lastInfo = NULL;
-
+    
     [self setupInfoDisplay];
 }
 
@@ -752,23 +620,23 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         case eWaiting: {
             [self startPositiveLearning];
         } break;
-
+            
         case ePositiveLearning: {
             [self startNegativeWaiting];
         } break;
-
+            
         case eNegativeWaiting: {
             [self startNegativeLearning];
         } break;
-
+            
         case eNegativeLearning: {
             [self startPredicting];
         } break;
-
+            
         case ePredicting: {
             [self restartLearning];
         } break;
-
+            
         default: {
             assert(FALSE); // Should never get here
         } break;
@@ -780,10 +648,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         jpcnn_destroy_trainer(trainer);
     }
     trainer = jpcnn_create_trainer();
-
+    
     positivePredictionsCount = 0;
     predictionState = ePositiveLearning;
-
+    
     [self updateInfoDisplay];
 }
 
@@ -795,7 +663,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (void)startNegativeLearning {
     negativePredictionsCount = 0;
     predictionState = eNegativeLearning;
-
+    
     [self updateInfoDisplay];
 }
 
@@ -815,9 +683,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     jpcnn_save_predictor([filePath UTF8String], predictor);
     //    NSString *thePredictor = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
     predictionState = ePredicting;
-
+    
     [self updateInfoDisplay];
-
+    
     self.lastFrameTime = [NSDate date];
 }
 
@@ -828,51 +696,51 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (void)setupInfoDisplay {
     NSString *const font = @"Menlo-Regular";
     const float fontSize = 20.0f;
-
+    
     const float viewWidth = 320.0f;
-
+    
     const float marginSizeX = 5.0f;
     const float marginSizeY = 5.0f;
     const float marginTopY = 7.0f;
-
+    
     const float progressHeight = 20.0f;
-
+    
     const float infoHeight = 150.0f;
-
+    
     const CGRect progressBackgroundBounds =
-            CGRectMake(marginSizeX, marginTopY, (viewWidth - (marginSizeX * 2)), progressHeight);
-
+    CGRectMake(marginSizeX, marginTopY, (viewWidth - (marginSizeX * 2)), progressHeight);
+    
     self.progressBackground = [CATextLayer layer];
     [self.progressBackground setBackgroundColor:[UIColor blackColor].CGColor];
     [self.progressBackground setOpacity:0.5f];
     [self.progressBackground setFrame:progressBackgroundBounds];
     self.progressBackground.cornerRadius = 5.0f;
-
+    
     [[self.view layer] addSublayer:self.progressBackground];
-
+    
     const CGRect progressForegroundBounds = CGRectMake(marginSizeX, marginTopY, 0.0f, progressHeight);
-
+    
     self.progressForeground = [CATextLayer layer];
     [self.progressForeground setBackgroundColor:[UIColor blueColor].CGColor];
     [self.progressForeground setOpacity:0.75f];
     [self.progressForeground setFrame:progressForegroundBounds];
     self.progressForeground.cornerRadius = 5.0f;
-
+    
     [[self.view layer] addSublayer:self.progressForeground];
-
+    
     const CGRect infoBackgroundBounds = CGRectMake(marginSizeX, (marginSizeY + progressHeight + marginSizeY),
                                                    (viewWidth - (marginSizeX * 2)), infoHeight);
-
+    
     self.infoBackground = [CATextLayer layer];
     [self.infoBackground setBackgroundColor:[UIColor blackColor].CGColor];
     [self.infoBackground setOpacity:0.5f];
     [self.infoBackground setFrame:infoBackgroundBounds];
     self.infoBackground.cornerRadius = 5.0f;
-
+    
     [[self.view layer] addSublayer:self.infoBackground];
-
+    
     const CGRect infoForegroundBounds = CGRectInset(infoBackgroundBounds, 5.0f, 5.0f);
-
+    
     self.infoForeground = [CATextLayer layer];
     [self.infoForeground setBackgroundColor:[UIColor clearColor].CGColor];
     [self.infoForeground setForegroundColor:[UIColor whiteColor].CGColor];
@@ -882,46 +750,46 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self.infoForeground setFont:(__bridge CFTypeRef _Nullable)(font)];
     [self.infoForeground setFontSize:fontSize];
     self.infoForeground.contentsScale = [[UIScreen mainScreen] scale];
-
+    
     [self.infoForeground setString:@""];
-
+    
     [[self.view layer] addSublayer:self.infoForeground];
 }
 
 - (void)updateInfoDisplay {
-
+    
     switch (predictionState) {
         case eWaiting: {
             [self setInfo:@"When you're ready to teach me, press the button at the bottom and point your phone at the "
-                          @"thing you want to recognize."];
+             @"thing you want to recognize."];
             [self setProgress:0.0f];
         } break;
-
+            
         case ePositiveLearning: {
             [self setInfo:@"Move around the thing you want to recognize, keeping the phone pointed at it, to capture "
-                          @"different angles."];
+             @"different angles."];
             [self setProgress:(positivePredictionsCount / (float)kPositivePredictionTotal)];
         } break;
-
+            
         case eNegativeWaiting: {
             [self setInfo:@"Now I need to see examples of things that aren't the object you're looking for. Press the "
-                          @"button when you're ready."];
+             @"button when you're ready."];
             [self setProgress:0.0f];
             [self.mainButton setTitle:@"Continue Learning" forState:UIControlStateNormal];
         } break;
-
+            
         case eNegativeLearning: {
             [self setInfo:@"Now move around the room pointing your phone at lots of things that are not the object you "
-                          @"want to recognize."];
+             @"want to recognize."];
             [self setProgress:(negativePredictionsCount / (float)kNegativePredictionTotal)];
         } break;
-
+            
         case ePredicting: {
             [self setInfo:@"You've taught the neural network to see! Now you should be able to scan around using the "
-                          @"camera and detect the object's presence."];
+             @"camera and detect the object's presence."];
             [self.mainButton setTitle:@"Learn Again" forState:UIControlStateNormal];
         } break;
-
+            
         default: {
             assert(FALSE); // Should never get here
         } break;
@@ -937,10 +805,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)setProgress:(float)amount {
     const CGRect progressBackgroundBounds = [self.progressBackground frame];
-
+    
     const float fullWidth = progressBackgroundBounds.size.width;
     const float foregroundWidth = (fullWidth * amount);
-
+    
     CGRect progressForegroundBounds = [self.progressForeground frame];
     progressForegroundBounds.size.width = foregroundWidth;
     [self.progressForeground setFrame:progressForegroundBounds];
@@ -951,7 +819,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         case eWaiting: {
             // Do nothing
         } break;
-
+            
         case ePositiveLearning: {
             jpcnn_train(trainer, 1.0f, predictions, predictionsLength);
             positivePredictionsCount += 1;
@@ -959,11 +827,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 [self triggerNextState];
             }
         } break;
-
+            
         case eNegativeWaiting: {
             // Do nothing
         } break;
-
+            
         case eNegativeLearning: {
             jpcnn_train(trainer, 0.0f, predictions, predictionsLength);
             negativePredictionsCount += 1;
@@ -971,18 +839,18 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 [self triggerNextState];
             }
         } break;
-
+            
         case ePredicting: {
             const float predictionValue = jpcnn_predict(predictor, predictions, predictionsLength);
             [self setProgress:predictionValue];
             self.lastFrameTime = [NSDate date];
         } break;
-
+            
         default: {
             assert(FALSE); // Should never get here
         } break;
     }
-
+    
     [self updateInfoDisplay];
 }
 
