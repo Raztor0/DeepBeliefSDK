@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		38CC14891C8954A300D86EFB /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38CC14881C8954A300D86EFB /* UIKit.framework */; };
+		38CC148B1C8954BF00D86EFB /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38CC148A1C8954BF00D86EFB /* Accelerate.framework */; };
 		592FF8B918ECBD7600C164F8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 592FF8B818ECBD7600C164F8 /* Foundation.framework */; };
 		592FF8BB18ECBD7600C164F8 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 592FF8BA18ECBD7600C164F8 /* CoreGraphics.framework */; };
-		592FF8BD18ECBD7600C164F8 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 592FF8BC18ECBD7600C164F8 /* UIKit.framework */; };
-		592FF90018ECC59F00C164F8 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 592FF8FF18ECC59F00C164F8 /* Accelerate.framework */; };
 		592FF90218ECC66200C164F8 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 592FF90118ECC66200C164F8 /* main.mm */; };
 		592FF90618ECCD3B00C164F8 /* jetpac.ntwk in Resources */ = {isa = PBXBuildFile; fileRef = 592FF90518ECCD1E00C164F8 /* jetpac.ntwk */; };
 		592FF90D18EDD0DA00C164F8 /* MainStoryboard_iPhone.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 592FF90A18EDD0DA00C164F8 /* MainStoryboard_iPhone.storyboard */; };
@@ -20,13 +20,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		38CC14881C8954A300D86EFB /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS9.2.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
+		38CC148A1C8954BF00D86EFB /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS9.2.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
 		592FF8B518ECBD7600C164F8 /* LearningExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LearningExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		592FF8B818ECBD7600C164F8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		592FF8BA18ECBD7600C164F8 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
-		592FF8BC18ECBD7600C164F8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
-		592FF8D118ECBD7600C164F8 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		592FF8F618ECBDF700C164F8 /* DeepBelief.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeepBelief.framework; path = ../../iOSLibrary/DeepBelief.framework; sourceTree = SOURCE_ROOT; };
-		592FF8FF18ECC59F00C164F8 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS7.1.sdk/System/Library/Frameworks/Accelerate.framework; sourceTree = DEVELOPER_DIR; };
 		592FF90118ECC66200C164F8 /* main.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = SOURCE_ROOT; };
 		592FF90318ECCB8300C164F8 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = SOURCE_ROOT; };
 		592FF90518ECCD1E00C164F8 /* jetpac.ntwk */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetpac.ntwk; sourceTree = SOURCE_ROOT; };
@@ -42,10 +41,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38CC148B1C8954BF00D86EFB /* Accelerate.framework in Frameworks */,
+				38CC14891C8954A300D86EFB /* UIKit.framework in Frameworks */,
 				59CC3BDB1914118B0046B191 /* DeepBelief.framework in Frameworks */,
-				592FF90018ECC59F00C164F8 /* Accelerate.framework in Frameworks */,
 				592FF8BB18ECBD7600C164F8 /* CoreGraphics.framework in Frameworks */,
-				592FF8BD18ECBD7600C164F8 /* UIKit.framework in Frameworks */,
 				592FF8B918ECBD7600C164F8 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -73,12 +72,11 @@
 		592FF8B718ECBD7600C164F8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				592FF8FF18ECC59F00C164F8 /* Accelerate.framework */,
+				38CC148A1C8954BF00D86EFB /* Accelerate.framework */,
+				38CC14881C8954A300D86EFB /* UIKit.framework */,
 				592FF8F618ECBDF700C164F8 /* DeepBelief.framework */,
 				592FF8B818ECBD7600C164F8 /* Foundation.framework */,
 				592FF8BA18ECBD7600C164F8 /* CoreGraphics.framework */,
-				592FF8BC18ECBD7600C164F8 /* UIKit.framework */,
-				592FF8D118ECBD7600C164F8 /* XCTest.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
