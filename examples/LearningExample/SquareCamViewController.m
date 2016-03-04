@@ -956,14 +956,21 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self updateInfoDisplay];
 }
 
+- (NSString *)applicationDocumentsDirectory {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *basePath = paths.firstObject;
+    return basePath;
+}
+
 - (void)startPredicting {
     if (predictor != NULL) {
         jpcnn_destroy_predictor(predictor);
     }
     predictor = jpcnn_create_predictor_from_trainer(trainer);
-    fprintf(stderr, "------------- SVM File output - copy lines below ------------\n");
-    jpcnn_print_predictor(predictor);
-    fprintf(stderr, "------------- end of SVM File output - copy lines above ------------\n");
+    NSString *fileName = [[[NSUUID UUID] UUIDString] stringByAppendingPathExtension:@"txt"];
+    NSString *filePath = [[self applicationDocumentsDirectory] stringByAppendingPathComponent:fileName];
+    jpcnn_save_predictor([filePath UTF8String], predictor);
+    //    NSString *thePredictor = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
     predictionState = ePredicting;
 
     [self updateInfoDisplay];
